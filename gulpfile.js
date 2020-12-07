@@ -14,7 +14,7 @@ const autoreload = require("autoreload-gulp");
 const usePlumbedGulpSrc = require("plumb-gulp").usePlumbedGulpSrc;
 const useOriginalGulpSrc = require("plumb-gulp").useOriginalGulpSrc;
 
-const gulpSrc = "gulp/**/*.js";
+const gulpSrc = "gulp/**/*.ts";
 const buildDir = "build";
 const gulpDir = path.join(`${buildDir}`, "gulp");
 const autoTask = "tdd";
@@ -28,7 +28,7 @@ function transpileGulp() {
     .src(gulpSrc, {
       base: ".",
     })
-    .pipe(newer(buildDir))
+    .pipe(newer({ dest: buildDir, ext: ".js" }))
     .pipe(debug({ title: "Build gulp include:" }))
     .pipe(babel())
     .on("error", (err) => {
@@ -55,14 +55,17 @@ try {
   gulp.task(privateAutoTask, gulp.parallel(watchGulp, autoTask));
 
   // If success, start infinite dev process with autoreload
-  gulp.task("default", autoreload(privateAutoTask, gulpDir));
+  gulp.task(
+    "default",
+    gulp.series(transpileGulp, autoreload(privateAutoTask, gulpDir))
+  );
 } catch (err) {
   // If error, try to regenerate include files
 
   // First make sure to abort on first subsequent error
   useOriginalGulpSrc();
 
-  // Distinguish between missing gulpDir ...
+  // Distinguish between missing gulpDir errors ...
   if (
     err.message.match(
       new RegExp(`no such file or directory, scandir '${gulpDir}'`)
